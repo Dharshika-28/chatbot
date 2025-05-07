@@ -1,12 +1,13 @@
 import './App.css'
-import { WelcomeScreen } from './components/welcome-screen'
+import Home from './components/page'
 
 function App() {
 
   return (
     <>
       <div>
-        <WelcomeScreen />
+        {/* <WelcomeScreen /> */}
+        <Home />
       </div>
     </>
   )
