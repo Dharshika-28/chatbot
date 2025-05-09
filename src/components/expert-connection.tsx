@@ -38,20 +38,12 @@ export function ExpertConnection({ onClose }: ExpertConnectionProps) {
 
   const saveExpertRequestToDatabase = async (requestData: any) => {
     try {
-      const userId = "current-user-id" // In a real app, you would get this from authentication
-
-      // Prepare the request body
+      const userId = "current-user-id"
       const requestBody = {
         userId,
-        expertType: requestData.expertType,
-        cropType: requestData.cropType,
-        landSize: requestData.landSize,
-        issue: requestData.issue,
-        contactNumber: requestData.contactNumber,
-        preferredTime: requestData.preferredTime,
+        ...requestData,
       }
 
-      // Send the request to the API
       const response = await fetch("/api/expert-request", {
         method: "POST",
         headers: {
@@ -74,16 +66,11 @@ export function ExpertConnection({ onClose }: ExpertConnectionProps) {
 
   const handleSubmit = async () => {
     setIsSubmitting(true)
-
     try {
-      // Save the expert request to the database
       await saveExpertRequestToDatabase(formData)
-
-      // If successful, update the UI
       setIsSubmitted(true)
     } catch (error) {
       console.error("Error submitting expert request:", error)
-      // Handle error appropriately
     } finally {
       setIsSubmitting(false)
     }
@@ -149,12 +136,13 @@ export function ExpertConnection({ onClose }: ExpertConnectionProps) {
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto">
+    <Card className="w-full max-w-md mx-auto bg-white shadow-lg">
       <CardHeader className="bg-gradient-to-r from-green-50 to-green-100 border-b">
         <CardTitle className="text-green-800">Connect with an Expert</CardTitle>
         <CardDescription>Get personalized assistance from agricultural experts</CardDescription>
       </CardHeader>
-      <CardContent className="p-0">
+
+      <CardContent className="p-0 max-h-[70vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid grid-cols-3 w-full rounded-none">
             <TabsTrigger value="message">Message</TabsTrigger>
@@ -162,147 +150,78 @@ export function ExpertConnection({ onClose }: ExpertConnectionProps) {
             <TabsTrigger value="experts">Experts</TabsTrigger>
           </TabsList>
 
+          {/* Message Tab */}
           <TabsContent value="message" className="p-4 space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="expert-type">Type of Expert Needed</Label>
-              <Select value={formData.expertType} onValueChange={(value) => handleChange("expertType", value)}>
-                <SelectTrigger id="expert-type">
-                  <SelectValue placeholder="Select expert type" />
+              <Label>Type of Expert</Label>
+              <Select onValueChange={(value) => handleChange("expertType", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose expert type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="soil-expert">Soil Expert</SelectItem>
-                  <SelectItem value="crop-specialist">Crop Specialist</SelectItem>
-                  <SelectItem value="pest-control">Pest Control Expert</SelectItem>
-                  <SelectItem value="irrigation-expert">Irrigation Expert</SelectItem>
-                  <SelectItem value="agri-economist">Agricultural Economist</SelectItem>
+                  <SelectItem value="Soil">Soil</SelectItem>
+                  <SelectItem value="Crop">Crop</SelectItem>
+                  <SelectItem value="Pest">Pest</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="crop-type">Crop Type</Label>
-              <Select value={formData.cropType} onValueChange={(value) => handleChange("cropType", value)}>
-                <SelectTrigger id="crop-type">
-                  <SelectValue placeholder="Select crop type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="rice">Rice</SelectItem>
-                  <SelectItem value="wheat">Wheat</SelectItem>
-                  <SelectItem value="sugarcane">Sugarcane</SelectItem>
-                  <SelectItem value="cotton">Cotton</SelectItem>
-                  <SelectItem value="vegetables">Vegetables</SelectItem>
-                  <SelectItem value="fruits">Fruits</SelectItem>
-                  <SelectItem value="pulses">Pulses</SelectItem>
-                  <SelectItem value="oilseeds">Oilseeds</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label>Crop Type</Label>
+              <Input placeholder="e.g. Paddy, Sugarcane" onChange={(e) => handleChange("cropType", e.target.value)} />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="land-size">Land Size</Label>
-              <Select value={formData.landSize} onValueChange={(value) => handleChange("landSize", value)}>
-                <SelectTrigger id="land-size">
-                  <SelectValue placeholder="Select land size" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="less-than-1">Less than 1 acre</SelectItem>
-                  <SelectItem value="1-5">1-5 acres</SelectItem>
-                  <SelectItem value="5-10">5-10 acres</SelectItem>
-                  <SelectItem value="more-than-10">More than 10 acres</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label>Land Size (in acres)</Label>
+              <Input placeholder="e.g. 2.5" onChange={(e) => handleChange("landSize", e.target.value)} />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="issue">Describe Your Issue</Label>
-              <Textarea
-                id="issue"
-                placeholder="Please describe your farming issue or question in detail..."
-                className="min-h-[100px]"
-                value={formData.issue}
-                onChange={(e) => handleChange("issue", e.target.value)}
-              />
+              <Label>Describe the issue</Label>
+              <Textarea rows={3} onChange={(e) => handleChange("issue", e.target.value)} />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="contact">Contact Number</Label>
-              <Input
-                id="contact"
-                type="tel"
-                placeholder="Enter your phone number"
-                value={formData.contactNumber}
-                onChange={(e) => handleChange("contactNumber", e.target.value)}
-              />
-              <p className="text-xs text-gray-500">An expert will contact you within 24 hours.</p>
+              <Label>Mobile Number</Label>
+              <Input placeholder="e.g. 9876543210" onChange={(e) => handleChange("contactNumber", e.target.value)} />
             </div>
           </TabsContent>
 
+          {/* Call Tab */}
           <TabsContent value="call" className="p-4 space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="expert-type-call">Type of Expert Needed</Label>
-              <Select value={formData.expertType} onValueChange={(value) => handleChange("expertType", value)}>
-                <SelectTrigger id="expert-type-call">
-                  <SelectValue placeholder="Select expert type" />
+              <Label>Type of Expert</Label>
+              <Select onValueChange={(value) => handleChange("expertType", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose expert type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="soil-expert">Soil Expert</SelectItem>
-                  <SelectItem value="crop-specialist">Crop Specialist</SelectItem>
-                  <SelectItem value="pest-control">Pest Control Expert</SelectItem>
-                  <SelectItem value="irrigation-expert">Irrigation Expert</SelectItem>
-                  <SelectItem value="agri-economist">Agricultural Economist</SelectItem>
+                  <SelectItem value="Soil">Soil</SelectItem>
+                  <SelectItem value="Crop">Crop</SelectItem>
+                  <SelectItem value="Pest">Pest</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="contact-call">Contact Number</Label>
-              <Input
-                id="contact-call"
-                type="tel"
-                placeholder="Enter your phone number"
-                value={formData.contactNumber}
-                onChange={(e) => handleChange("contactNumber", e.target.value)}
-              />
+              <Label>Preferred Call Time</Label>
+              <Input placeholder="e.g. Tomorrow 10AM" onChange={(e) => handleChange("preferredTime", e.target.value)} />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="preferred-time">Preferred Time for Call</Label>
-              <Select value={formData.preferredTime} onValueChange={(value) => handleChange("preferredTime", value)}>
-                <SelectTrigger id="preferred-time">
-                  <SelectValue placeholder="Select preferred time" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="morning">Morning (9 AM - 12 PM)</SelectItem>
-                  <SelectItem value="afternoon">Afternoon (12 PM - 4 PM)</SelectItem>
-                  <SelectItem value="evening">Evening (4 PM - 7 PM)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex space-x-2 pt-4">
-              <Button className="flex-1 bg-green-600 hover:bg-green-700">
-                <Phone className="h-4 w-4 mr-2" />
-                Request Call
-              </Button>
-              <Button variant="outline" className="flex-1">
-                <Calendar className="h-4 w-4 mr-2" />
-                Schedule
-              </Button>
-            </div>
-
-            <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200 text-sm text-yellow-800">
-              <p>Our experts will call you at your preferred time. Make sure to provide a valid contact number.</p>
+              <Label>Mobile Number</Label>
+              <Input placeholder="e.g. 9876543210" onChange={(e) => handleChange("contactNumber", e.target.value)} />
             </div>
           </TabsContent>
 
+          {/* Experts Tab */}
           <TabsContent value="experts" className="p-4 space-y-4">
             <p className="text-sm text-gray-600 mb-2">Available agricultural experts:</p>
-
             <div className="space-y-3">
               {experts.map((expert) => (
                 <div key={expert.id} className="border rounded-lg p-3 flex items-start">
                   <Avatar className="h-12 w-12 mr-3">
-                    <AvatarImage src={expert.image || "/placeholder.svg"} alt={expert.name} />
+                    <AvatarImage src={expert.image} alt={expert.name} />
                     <AvatarFallback>{expert.name.charAt(0)}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
@@ -317,7 +236,6 @@ export function ExpertConnection({ onClose }: ExpertConnectionProps) {
                     </div>
                     <p className="text-sm text-gray-600">{expert.specialty}</p>
                     <p className="text-xs text-gray-500">{expert.organization}</p>
-
                     {expert.available && (
                       <Button size="sm" className="mt-2 bg-green-600 hover:bg-green-700 h-8 text-xs">
                         <User className="h-3 w-3 mr-1" />
@@ -338,13 +256,14 @@ export function ExpertConnection({ onClose }: ExpertConnectionProps) {
           </TabsContent>
         </Tabs>
       </CardContent>
+
       <CardFooter className="flex justify-between border-t p-4">
         <Button variant="outline" onClick={onClose}>
           Cancel
         </Button>
         <Button
           onClick={handleSubmit}
-          disabled={isSubmitting || !formData.expertType || !formData.issue || !formData.contactNumber}
+          disabled={isSubmitting || !formData.expertType || !formData.contactNumber}
           className="bg-green-600 hover:bg-green-700"
         >
           {isSubmitting ? (

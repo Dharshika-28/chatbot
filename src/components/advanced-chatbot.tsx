@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useRef, useEffect } from "react"
-import { Send, Loader2, Camera, Droplets, Bug } from "lucide-react"
+import { Send, Loader2, Camera, Droplets, Bug, X } from "lucide-react"
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { SuggestedQuestions } from './suggested-questions'
@@ -93,14 +93,11 @@ export function AdvancedChatbot() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
 
-  // Replace the saveMessageToDatabase function with this version that uses the storage service
-
   const saveMessageToDatabase = async (message: string, role: "user" | "bot", type?: string, image?: string) => {
     try {
       const timestamp = new Date().toISOString()
-      const userId = "current-user-id" // In a real app, you would get this from authentication
+      const userId = "current-user-id"
 
-      // Prepare the message data
       const messageData = {
         id: Date.now().toString(),
         conversation_id: conversationId || undefined,
@@ -111,11 +108,9 @@ export function AdvancedChatbot() {
         image: image || null,
       }
 
-      // If no conversation exists yet, create one
       if (!conversationId) {
         const newConversationId = Date.now().toString()
 
-        // Create conversation
         await fetch("/api/conversation", {
           method: "POST",
           headers: {
@@ -140,11 +135,8 @@ export function AdvancedChatbot() {
           })
           .catch((error) => {
             console.error("Error saving message:", error)
-            // Even if the API call fails, we can continue with the chat
-            // The message will be stored in memory but not persisted
           })
       } else {
-        // Add message to existing conversation
         await fetch("/api/conversation", {
           method: "POST",
           headers: {
@@ -160,61 +152,92 @@ export function AdvancedChatbot() {
           }),
         }).catch((error) => {
           console.error("Error saving message:", error)
-          // Even if the API call fails, we can continue with the chat
         })
       }
 
       return { success: true }
     } catch (error) {
       console.error("Error saving message:", error)
-      // Don't throw here - we don't want to break the chat if saving fails
       return { success: false }
     }
   }
 
+  const handleResetChat = () => {
+    setMessages([])
+    setShowWelcomeScreen(true)
+    setShowSuggestions(true)
+    setInput("")
+    setIsLoading(false)
+    setShowCameraUpload(false)
+    setShowExpertConnect(false)
+    setShowEnhancedSoilTest(false)
+    setShowSoilScanner(false)
+    setShowPestDetection(false)
+    setContext({})
+    setConversationId(null)
+  }
+
+  const sendBotResponse = async (response: { content: string; type?: string }) => {
+    setIsLoading(true);
+    
+    const botMessage = {
+      id: (Date.now() + 1).toString(),
+      content: response.content,
+      role: "bot" as const,
+      type: response.type,
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, botMessage]);
+    await saveMessageToDatabase(botMessage.content, "bot", response.type);
+    setIsLoading(false);
+  };
+
   const handleSendMessage = async () => {
-    if (!input.trim()) return
+    if (!input.trim()) return;
 
     const userMessage = {
       id: Date.now().toString(),
       content: input,
       role: "user" as const,
       timestamp: new Date(),
-    }
+    };
 
-    setMessages((prev) => [...prev, userMessage])
-    setInput("")
-    setIsLoading(true)
-    setShowSuggestions(false)
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
+    setIsLoading(true);
+    setShowSuggestions(false);
+    setShowWelcomeScreen(false);
 
-    // Save user message to database
-    await saveMessageToDatabase(userMessage.content, "user")
+    await saveMessageToDatabase(userMessage.content, "user");
 
-    // Detect intent and generate response
-    const intent = detectIntent(input)
-    const response = generateResponse(intent, input, context)
+    const intent = detectIntent(input);
+    const response = generateResponse(intent, input, context);
 
-    // Simulate API delay
+    // Automatically send bot response after a short delay
     setTimeout(async () => {
-      const botMessage = {
-        id: (Date.now() + 1).toString(),
-        content: response.content,
-        role: "bot" as const,
-        type: response.type,
-        timestamp: new Date(),
+      await sendBotResponse(response);
+      
+      // For certain intents, automatically trigger follow-up actions
+      if (intent === "expert_connect") {
+        setShowExpertConnect(true);
+      } else if (intent === "enhanced_soil_test") {
+        setShowEnhancedSoilTest(true);
+      } else if (intent === "pest_detection") {
+        setShowPestDetection(true);
+      } else if (intent === "soil_test") {
+        // Auto-suggest soil scanner if soil test is mentioned
+        setTimeout(async () => {
+          await sendBotResponse({
+            content: "Would you like to use the soil scanner to analyze your soil?",
+            type: "text"
+          });
+        }, 500);
       }
-
-      setMessages((prev) => [...prev, botMessage])
-
-      // Save bot response to database
-      await saveMessageToDatabase(botMessage.content, "bot", response.type)
-
-      setIsLoading(false)
-    }, 1000)
+    }, 1000);
   }
 
   const handleSoilDetected = (soilAnalysis) => {
-    // Create a message with the soil analysis results
     const soilMessage = {
       id: Date.now().toString(),
       content: `Based on the soil analysis, I've detected ${soilAnalysis.soilType} soil with ${soilAnalysis.color} color. This soil has ${soilAnalysis.fertility} fertility and ${soilAnalysis.organicMatter} organic matter content.`,
@@ -224,7 +247,6 @@ export function AdvancedChatbot() {
 
     setMessages((prev) => [...prev, soilMessage])
 
-    // Add recommendations
     const recommendationsMessage = {
       id: (Date.now() + 1).toString(),
       content: `Recommendations for your ${soilAnalysis.soilType} soil:\n${soilAnalysis.recommendations.join("\n")}`,
@@ -234,24 +256,19 @@ export function AdvancedChatbot() {
 
     setMessages((prev) => [...prev, recommendationsMessage])
 
-    // Save messages to database
     saveMessageToDatabase(soilMessage.content, "bot")
     saveMessageToDatabase(recommendationsMessage.content, "bot")
 
-    // Update context with soil type
     setContext((prev) => ({
       ...prev,
       soilType: soilAnalysis.soilType,
       lastIntent: "soil_analysis",
     }))
 
-    // Close the soil scanner
     setShowSoilScanner(false)
   }
 
-  // Add this function to handle pest detection results
   const handlePestDetected = (pestAnalysis) => {
-    // Create a message with the pest analysis results
     const pestMessage = {
       id: Date.now().toString(),
       content: `I've identified ${pestAnalysis.pestType} in your image with ${Math.round(pestAnalysis.confidence * 100)}% confidence. ${pestAnalysis.description}`,
@@ -261,7 +278,6 @@ export function AdvancedChatbot() {
 
     setMessages((prev) => [...prev, pestMessage])
 
-    // Add damage information
     const damageMessage = {
       id: (Date.now() + 1).toString(),
       content: `Typical damage: ${pestAnalysis.damage}`,
@@ -271,7 +287,6 @@ export function AdvancedChatbot() {
 
     setMessages((prev) => [...prev, damageMessage])
 
-    // Add treatment recommendations
     const treatmentMessage = {
       id: (Date.now() + 2).toString(),
       content: `Recommended treatments:\n${pestAnalysis.treatments.join("\n")}`,
@@ -281,12 +296,10 @@ export function AdvancedChatbot() {
 
     setMessages((prev) => [...prev, treatmentMessage])
 
-    // Save messages to database
     saveMessageToDatabase(pestMessage.content, "bot")
     saveMessageToDatabase(damageMessage.content, "bot")
     saveMessageToDatabase(treatmentMessage.content, "bot")
 
-    // Close the pest detection
     setShowPestDetection(false)
   }
 
@@ -332,7 +345,9 @@ export function AdvancedChatbot() {
       case "soil_test":
         return {
           content:
-            "I can help you with soil testing. Please fill out this form or use the camera to analyze your soil:",
+            context.soilType 
+              ? `I see you previously had ${context.soilType} soil. Would you like to run a new soil test or see recommendations again?`
+              : "I can help you with soil testing. Please fill out this form or use the camera to analyze your soil:",
           type: "soil-form",
         }
       case "government_aid":
@@ -352,19 +367,16 @@ export function AdvancedChatbot() {
           type: "text",
         }
       case "expert_connect":
-        setShowExpertConnect(true)
         return {
-          content: "Connecting you to an expert. Please fill out the form.",
+          content: "I'll connect you to an agricultural expert. Please provide some details about your issue:",
           type: "text",
         }
       case "enhanced_soil_test":
-        setShowEnhancedSoilTest(true)
         return {
-          content: "Okay, let's get you set up with an enhanced soil test.",
+          content: "I'll help you with an enhanced soil test. This will provide more detailed analysis than standard tests.",
           type: "text",
         }
       case "pest_detection":
-        setShowPestDetection(true)
         return {
           content:
             "Let's identify the pests affecting your crops. Please take a clear photo of the pest or affected plant part.",
@@ -384,19 +396,41 @@ export function AdvancedChatbot() {
     setShowWelcomeScreen(false)
     if (option === "connect-expert") {
       setShowExpertConnect(true)
+      sendBotResponse({
+        content: "I'll connect you to an agricultural expert. Please provide some details about your issue:",
+        type: "text"
+      });
     } else if (option === "enhanced-soil-test") {
       setShowEnhancedSoilTest(true)
+      sendBotResponse({
+        content: "I'll help you with an enhanced soil test. This will provide more detailed analysis than standard tests.",
+        type: "text"
+      });
     } else {
       setInput(`I am interested in ${option.replace("-", " ")}.`)
+      // Auto-send the message
+      setTimeout(() => {
+        handleSendMessage();
+      }, 0);
     }
   }
 
   const handleStartChat = () => {
     setShowWelcomeScreen(false)
+    setShowSuggestions(true)
+    // Auto-send welcome message
+    sendBotResponse({
+      content: "Hello! I'm your agricultural assistant. How can I help you today?",
+      type: "text"
+    });
   }
 
   const handleSelectQuestion = (question: string) => {
     setInput(question)
+    // Auto-send the selected question
+    setTimeout(() => {
+      handleSendMessage();
+    }, 0);
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -407,7 +441,6 @@ export function AdvancedChatbot() {
   }
 
   const handleImageCapture = (imageData) => {
-    // Add the image to the chat as a user message
     const imageMessage = {
       id: Date.now().toString(),
       content: "I've taken a photo for analysis.",
@@ -418,11 +451,10 @@ export function AdvancedChatbot() {
 
     setMessages((prev) => [...prev, imageMessage])
     setIsLoading(true)
+    setShowWelcomeScreen(false)
 
-    // Save user message with image to database
     saveMessageToDatabase(imageMessage.content, "user", "text", imageData)
 
-    // Ask user what they want to analyze
     setTimeout(() => {
       const analysisOptions = {
         id: (Date.now() + 1).toString(),
@@ -435,7 +467,6 @@ export function AdvancedChatbot() {
       setMessages((prev) => [...prev, analysisOptions])
       saveMessageToDatabase(analysisOptions.content, "bot")
 
-      // Add another message with buttons (in a real implementation, you'd have UI buttons)
       const optionsMessage = {
         id: (Date.now() + 2).toString(),
         content: "Please type 'soil' for soil analysis or 'pest' for pest detection.",
@@ -468,7 +499,18 @@ export function AdvancedChatbot() {
   }
 
   return (
-    <div className="flex flex-col h-[600px]">
+    <div className="flex flex-col h-[600px] relative">
+      {/* Cancel button - positioned at top right */}
+      {!showWelcomeScreen && (
+        <button
+          onClick={handleResetChat}
+          className="absolute top-2 right-2 p-2 rounded-full bg-green-500 hover:bg-gray-200 transition-colors z-10"
+          aria-label="Reset chat"
+        >
+          <X className="h-5 w-5 text-gray-600" />
+        </button>
+      )}
+
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {showWelcomeScreen ? (
           <WelcomeScreen onSelectOption={handleSelectOption} onStartChat={handleStartChat} />
@@ -523,7 +565,10 @@ export function AdvancedChatbot() {
       )}
 
       <div className="border-t p-4">
-        {showSuggestions && messages.length < 3 && <SuggestedQuestions onSelectQuestion={handleSelectQuestion} />}
+        {/* Show suggestions when welcome screen is gone and there are few messages */}
+        {!showWelcomeScreen && showSuggestions && messages.length < 3 && (
+          <SuggestedQuestions onSelectQuestion={handleSelectQuestion} />
+        )}
         <div className="flex space-x-2">
           <Input
             value={input}

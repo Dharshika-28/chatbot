@@ -1,9 +1,22 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState } from "react"
 import { Button } from './ui/button'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card'
-import { Loader2, Globe, Camera, X, AlertCircle } from "lucide-react"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
+} from './ui/card'
+import {
+  Loader2,
+  Globe,
+  Camera,
+  X,
+  AlertCircle
+} from "lucide-react"
 import { ImprovedCameraModal } from './improved-camera-modal'
 
 interface SoilCameraScannerProps {
@@ -94,7 +107,6 @@ export function SoilCameraScanner({ onScanComplete, onClose }: SoilCameraScanner
         setScanResult(result)
         if (onScanComplete) onScanComplete(result)
 
-        // Save to API (optional)
         fetch("/api/soil-test", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -120,92 +132,68 @@ export function SoilCameraScanner({ onScanComplete, onClose }: SoilCameraScanner
 
   return (
     <Card className="w-full bg-white">
-    <CardHeader className="relative">
-            {onClose && (
-              <button
-                onClick={onClose}
-                className="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
-                aria-label="Close"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            )}
-      <CardTitle className="flex items-center gap-2">
-        <Globe className="h-5 w-5" />
-        Soil Scanner
-      </CardTitle>
-      <CardDescription>
-        Take a photo of your soil to analyze its properties
-      </CardDescription>
-    </CardHeader>
+      <CardHeader className="relative">
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
+            aria-label="Close"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
+        <CardTitle className="flex items-center gap-2">
+          <Camera className="w-6 h-6" /> Soil Scanner
+        </CardTitle>
+        <CardDescription>Capture and analyze your soil sample.</CardDescription>
+      </CardHeader>
 
-      <CardContent>
-        {scanError ? (
-          <div className="text-destructive text-center p-4">
-            <p>{scanError}</p>
-            <Button variant="outline" onClick={resetScan} className="mt-2">
-              Try Again
-            </Button>
-          </div>
-        ) : isAnalyzing ? (
-          <div className="flex flex-col items-center justify-center p-6">
-            <Loader2 className="h-8 w-8 animate-spin mb-2" />
-            <p>Analyzing soil sample...</p>
-          </div>
-        ) : scanResult ? (
-          <div className="space-y-4">
-            <div className="aspect-video relative rounded-lg overflow-hidden">
-              <img
-                src={scanResult.imageData || "/placeholder.svg"}
-                alt="Soil sample"
-                className="w-full h-full object-cover"
-              />
-            </div>
-
-            <div className="bg-muted/20 p-4 rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <div
-                  className="w-6 h-6 rounded-full border"
-                  style={{
-                    backgroundColor: scanResult.soilColor.replace("RGB", "rgb"),
-                  }}
-                />
-                <h3 className="font-medium">Soil Color: {scanResult.soilColor}</h3>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <p className="text-sm font-medium">Soil Type</p>
-                  <p className="text-sm">{scanResult.soilType}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium">Estimated pH</p>
-                  <p className="text-sm">{scanResult.phEstimate}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
+      <CardContent className="flex flex-col items-center justify-center gap-4">
+        {!capturedImage && (
           <div className="flex flex-col items-center justify-center p-6 bg-white">
-            <Button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 border-2 border-green-600 text-green-700 hover:bg-green-50">
-              <Camera className="h-4 w-4 " />
-              Capture Soil Image
-            </Button>
-            <p className="text-xs text-muted-foreground mt-2 text-center max-w-xs">
-              Take a clear photo of the soil in good lighting for best results
-            </p>
+          <Button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 border-2 border-green-600 text-green-700 hover:bg-green-50">
+            <Camera className="h-4 w-4 " />
+            Capture Soil Image
+          </Button>
+          <p className="text-xs text-muted-foreground mt-2 text-center max-w-xs">
+            Take a clear photo of the soil in good lighting for best results
+          </p>
+        </div>
+        )}
+
+        {capturedImage && (
+          <img src={capturedImage} alt="Captured soil" className="rounded w-full max-w-xs border" />
+        )}
+
+        {isAnalyzing && (
+          <div className="flex items-center gap-2">
+            <Loader2 className="animate-spin w-4 h-4" /> Analyzing soil image...
+          </div>
+        )}
+
+        {scanError && (
+          <div className="text-red-600 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" /> {scanError}
+          </div>
+        )}
+
+        {scanResult && (
+          <div className="text-sm text-center">
+            <p><strong>Soil Type:</strong> {scanResult.soilType}</p>
+            <p><strong>Estimated pH:</strong> {scanResult.phEstimate}</p>
+            <p><strong>Color:</strong> {scanResult.soilColor}</p>
+            <p className="text-gray-500 text-xs">Scanned at: {new Date(scanResult.timestamp).toLocaleString()}</p>
           </div>
         )}
       </CardContent>
 
-      {scanResult && (
-        <CardFooter className="flex justify-between">
+      <CardFooter className="flex justify-between">
+        {capturedImage && (
           <Button variant="outline" onClick={resetScan}>
-            Scan Another Sample
+            Retake
           </Button>
-          <Button variant="default">View Detailed Analysis</Button>
-        </CardFooter>
-      )}
+        )}
+      </CardFooter>
 
       {onClose && (
         <CardFooter>
@@ -215,12 +203,11 @@ export function SoilCameraScanner({ onScanComplete, onClose }: SoilCameraScanner
         </CardFooter>
       )}
 
-      <ImprovedCameraModal 
+      <ImprovedCameraModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onImageCapture={handleCapture}
         purpose="soil"
-        title="Capture Soil Image"
       />
     </Card>
   )
